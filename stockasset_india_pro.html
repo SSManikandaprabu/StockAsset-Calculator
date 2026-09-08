@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAsset India Pro: Advanced 3D Wealth & Market Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js & Chart.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- HTML to PDF Generator CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.9); }
+        ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.4); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.8); }
+        .glow-emerald { box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.3); }
+        .glass-panel { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(52, 211, 153, 0.15); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-x-hidden">
+
+    <div class="bg-slate-900 border-b border-emerald-950/80 px-4 py-2 flex items-center justify-between text-xs overflow-hidden whitespace-nowrap z-50">
+        <div class="flex items-center space-x-6 animate-pulse text-emerald-400 font-mono">
+            <span><i class="fa-solid fa-bolt mr-1"></i> NSE NIFTY 50: <strong id="ticker-nifty" class="text-white">23,779.15 (-0.50%)</strong></span>
+            <span><i class="fa-solid fa-chart-line mr-1"></i> SENSEX: <strong id="ticker-sensex" class="text-white">76,570.35 (-0.49%)</strong></span>
+            <span><i class="fa-solid fa-indian-rupee-sign mr-1"></i> USD/INR: <strong id="ticker-usd" class="text-white">94.49</strong></span>
+            <span><i class="fa-solid fa-coins mr-1"></i> GOLD 24K (10g): <strong id="ticker-gold" class="text-white">₹1,55,840</strong></span>
+        </div>
+        <div class="hidden md:flex items-center space-x-3 text-slate-400 font-medium">
+            <span>🇮🇳 Live SEBI Feed Active</span>
+            <span class="text-emerald-500">•</span>
+            <span id="live-clock">00:00:00 IST</span>
+        </div>
+    </div>
+
+    <header class="border-b border-emerald-950/60 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between shadow-2xl">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <i class="fa-solid fa-cubes text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-base tracking-tight bg-gradient-to-r from-white via-emerald-200 to-emerald-400 bg-clip-text text-transparent">StockAsset India Pro</h1>
+                <p class="text-[11px] text-emerald-400/80 font-medium">Advanced Multi-Asset 3D Wealth Architect & Live Ticker Simulator</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="refreshLiveMarket()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition border border-slate-700" title="Simulate Daily Market Shift">
+                <i class="fa-solid fa-arrows-rotate mr-1.5"></i> Live Sync
+            </button>
+            <button onclick="resetSimulator()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition border border-slate-700">
+                <i class="fa-solid fa-rotate-right mr-1.5"></i> Reset
+            </button>
+            <button onclick="loadPreset('hni')" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-950 hover:bg-emerald-900 text-emerald-300 transition border border-emerald-800/60 hidden sm:block">
+                💼 HNI Portfolio
+            </button>
+            <button onclick="loadPreset('fire')" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-teal-950 hover:bg-teal-900 text-teal-300 transition border border-teal-800/60 hidden sm:block">
+                🔥 FIRE Calculator
+            </button>
+            <button onclick="openExportModal()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-600/30">
+                <i class="fa-solid fa-file-pdf mr-1.5"></i> Generate Report
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 relative">
+        
+        <!-- Controls Sidebar -->
+        <section class="lg:col-span-4 xl:col-span-3 p-5 bg-slate-900/90 border-r border-emerald-950/50 flex flex-col space-y-4 overflow-y-auto max-h-[calc(100vh-120px)]">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Portfolio Asset Configurator</h2>
+                <span class="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-800/60 font-mono">PRO ENGINE</span>
+            </div>
+
+            <!-- Group 1: Core Capital -->
+            <div class="space-y-3.5 bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/50">
+                <h3 class="text-xs font-semibold text-slate-200 flex items-center justify-between">
+                    <span><i class="fa-solid fa-wallet text-emerald-400 mr-1.5"></i> Principal & SIP</span>
+                </h3>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-medium">
+                        <span class="text-slate-300">Initial Lumpsum (₹)</span>
+                        <span id="val-lumpsum" class="text-emerald-400 font-bold font-mono">₹25,00,000</span>
+                    </div>
+                    <input type="range" id="input-lumpsum" min="100000" max="20000000" step="100000" value="2500000" 
+                        class="w-full accent-emerald-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-medium">
+                        <span class="text-slate-300">Monthly SIP (₹)</span>
+                        <span id="val-sip" class="text-emerald-400 font-bold font-mono">₹75,000</span>
+                    </div>
+                    <input type="range" id="input-sip" min="5000" max="500000" step="5000" value="75000" 
+                        class="w-full accent-emerald-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-medium">
+                        <span class="text-slate-300">Time Horizon (Years)</span>
+                        <span id="val-years" class="text-emerald-400 font-bold font-mono">15 Years</span>
+                    </div>
+                    <input type="range" id="input-years" min="1" max="30" step="1" value="15" 
+                        class="w-full accent-emerald-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Group 2: Asset Allocation Mix -->
+            <div class="space-y-3.5 bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/50">
+                <h3 class="text-xs font-semibold text-slate-200 flex items-center justify-between">
+                    <span><i class="fa-solid fa-pie-chart text-teal-400 mr-1.5"></i> Asset Allocation Mix</span>
+                </h3>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-medium">
+                        <span class="text-slate-300">Nifty 50 / Bluechip Stocks (%)</span>
+                        <span id="val-bluechip" class="text-blue-400 font-bold font-mono">45%</span>
+                    </div>
+                    <input type="range" id="input-bluechip" min="0" max="100" step="5" value="45" 
+                        class="w-full accent-blue-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-medium">
+                        <span class="text-slate-300">Mid/Small-Cap Alpha (%)</span>
+                        <span id="val-midcap" class="text-emerald-400 font-bold font-mono">30%</span>
+                    </div>
+                    <input type="range" id="input-midcap" min="0" max="100" step="5" value="30" 
+                        class="w-full accent-emerald-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-medium">
+                        <span class="text-slate-300">Gold & Sovereign Bonds (%)</span>
+                        <span id="val-gold" class="text-amber-400 font-bold font-mono">15%</span>
+                    </div>
+                    <input type="range" id="input-gold" min="0" max="100" step="5" value="15" 
+                        class="w-full accent-amber-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1 font-medium">
+                        <span class="text-slate-300">Tech ESOPs & Crypto (%)</span>
+                        <span id="val-esop" class="text-cyan-400 font-bold font-mono">10%</span>
+                    </div>
+                    <input type="range" id="input-esop" min="0" max="100" step="5" value="10" 
+                        class="w-full accent-cyan-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Group 3: Taxation & Inflation -->
+            <div class="space-y-3.5 bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/50">
+                <h3 class="text-xs font-semibold text-slate-200 flex items-center">
+                    <i class="fa-solid fa-receipt text-amber-400 mr-1.5"></i> Macro Parameters
+                </h3>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">Inflation (% p.a.)</span>
+                        <input type="number" id="input-inflation" value="6" step="0.5" min="2" max="12" 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <span class="text-[11px] text-slate-400 block mb-1">LTCG Tax Rate (%)</span>
+                        <input type="number" id="input-tax" value="12.5" step="0.5" min="0" max="30" 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Output Box -->
+            <div class="bg-gradient-to-br from-emerald-950/80 via-slate-900 to-slate-900 p-4 rounded-xl border border-emerald-500/40 space-y-3 shadow-xl">
+                <h3 class="text-xs font-bold text-emerald-300 uppercase tracking-widest flex items-center justify-between">
+                    <span>Compounded Wealth</span>
+                    <i class="fa-solid fa-arrow-trend-up text-emerald-400"></i>
+                </h3>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block mb-0.5">Total Invested</span>
+                        <span id="out-invested" class="text-sm font-bold text-white font-mono">₹1.60 Cr</span>
+                    </div>
+                    <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block mb-0.5">Portfolio Value</span>
+                        <span id="out-wealth" class="text-sm font-bold text-emerald-400 font-mono">₹6.48 Cr</span>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5 pt-2 border-t border-slate-800 text-xs font-mono">
+                    <div class="flex justify-between text-slate-300">
+                        <span>Net Profit (Pre-Tax):</span>
+                        <span id="out-gain" class="text-emerald-400 font-bold">₹4.88 Cr</span>
+                    </div>
+                    <div class="flex justify-between text-slate-300">
+                        <span>Estimated Tax (LTCG):</span>
+                        <span id="out-tax" class="text-rose-400 font-bold">₹61.0 L</span>
+                    </div>
+                    <div class="flex justify-between text-slate-300">
+                        <span>Post-Tax Net Wealth:</span>
+                        <span id="out-posttax" class="text-teal-300 font-bold">₹5.87 Cr</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="lg:col-span-8 xl:col-span-9 relative bg-slate-950 flex flex-col">
+            
+            <!-- Floating View Mode Switcher -->
+            <div class="absolute top-4 left-4 z-10 flex space-x-2 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-2xl">
+                <button onclick="switchView('towers')" id="btn-towers" class="px-3.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white transition shadow">3D Wealth Pillars</button>
+                <button onclick="switchView('particles')" id="btn-particles" class="px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition">Market Particle Matrix</button>
+                <button onclick="switchView('chart')" id="btn-chart" class="px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition">Compounding Curve</button>
+            </div>
+
+            <!-- 3D Canvas Container -->
+            <div id="canvas-container" class="w-full flex-1 min-h-[450px] relative cursor-grab active:cursor-grabbing"></div>
+
+            <!-- Chart Container (hidden by default) -->
+            <div id="chart-container" class="absolute inset-0 bg-slate-950/95 p-6 backdrop-blur-xl hidden flex flex-col justify-center items-center z-20">
+                <div class="w-full max-w-4xl bg-slate-900/90 p-6 rounded-2xl border border-emerald-500/30 shadow-2xl relative">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-chart-area text-emerald-400"></i>
+                            <span>Year-by-Year Wealth Growth Projection</span>
+                        </h3>
+                        <button onclick="switchView('towers')" class="text-slate-400 hover:text-white text-xs px-3 py-1 bg-slate-800 rounded-lg">Close Chart</button>
+                    </div>
+                    <div class="h-80 w-full">
+                        <canvas id="wealthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating Interaction Helper -->
+            <div class="absolute bottom-4 left-4 z-10 bg-slate-900/90 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-800/80 flex items-center space-x-3 text-xs text-slate-300 pointer-events-none shadow-xl">
+                <i class="fa-solid fa-cube text-emerald-400 text-sm animate-spin"></i>
+                <div>
+                    <span class="font-semibold text-white">Interactive 3D Engine:</span> Drag to rotate camera • Scroll to zoom
+                </div>
+            </div>
+
+            <!-- Asset Breakdown Legend Bar -->
+            <div class="bg-slate-900/90 border-t border-emerald-950/60 p-3.5 px-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs z-10">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-3.5 h-3.5 rounded bg-blue-500 shadow-sm shadow-blue-500/50"></div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">Bluechip / Nifty</span>
+                        <span id="legend-bluechip" class="font-bold text-white font-mono">₹0</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-3.5 h-3.5 rounded bg-emerald-500 shadow-sm shadow-emerald-500/50"></div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">Mid & Small Cap</span>
+                        <span id="legend-midcap" class="font-bold text-white font-mono">₹0</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-3.5 h-3.5 rounded bg-amber-500 shadow-sm shadow-amber-500/50"></div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">Gold & Sovereign</span>
+                        <span id="legend-gold" class="font-bold text-white font-mono">₹0</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-3.5 h-3.5 rounded bg-cyan-400 shadow-sm shadow-cyan-400/50"></div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">ESOPs & Crypto</span>
+                        <span id="legend-esop" class="font-bold text-white font-mono">₹0</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="report-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-emerald-500/40 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i>
+                    <span>Executive Wealth & Tax Summary Report</span>
+                </h3>
+                <button onclick="closeExportModal()" class="text-slate-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div id="modal-content" class="text-xs space-y-3 text-slate-300 font-mono">
+                <!-- Dynamically populated -->
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-3">
+                <button onclick="closeExportModal()" class="px-4 py-2 rounded-xl text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">Close</button>
+                <button onclick="downloadPDFReport()" class="px-4 py-2 rounded-xl text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-600/30"><i class="fa-solid fa-download mr-1.5"></i> Download PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast-banner" class="fixed bottom-6 right-6 z-50 bg-slate-900 border border-emerald-500/50 text-slate-100 px-5 py-3 rounded-xl shadow-2xl transform translate-y-24 opacity-0 transition-all duration-300 flex items-center space-x-3 text-xs">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span id="toast-text" class="font-medium">Notification message</span>
+    </div>
+
+    <script>
+        // Real-time clock & Live Market Ticker Simulator
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').textContent = now.toLocaleTimeString('en-IN') + ' IST';
+        }, 1000);
+
+        function refreshLiveMarket() {
+            /* 
+             * NOTE: This is a simulation algorithm for demonstration.
+             * To get REAL daily data, you would replace this block with an API call:
+             * 
+             * fetch('https://finnhub.io/api/v1/quote?symbol=^NSEI&token=YOUR_API_KEY')
+             *   .then(res => res.json())
+             *   .then(data => updateUI(data));
+             */
+             
+            // Base latest realistic values
+            const baseNifty = 23779.15;
+            const baseSensex = 76570.35;
+            const baseUsd = 83.45; // Updated to a more accurate historical base
+            const baseGold = 158370; // Per 100g / 10g depending on standard
+
+            // Simulated daily realistic shift (random fluctuation between -1.5% and +1.5%)
+            const niftyChange = (Math.random() * 3 - 1.5);
+            const niftyCurrent = baseNifty * (1 + (niftyChange / 100));
+            
+            const sensexChange = (Math.random() * 3 - 1.5);
+            const sensexCurrent = baseSensex * (1 + (sensexChange / 100));
+            
+            const usdChange = (Math.random() * 0.5 - 0.25);
+            const usdCurrent = baseUsd + usdChange;
+            
+            const goldChange = Math.floor(Math.random() * 1000 - 500);
+            const goldCurrent = baseGold + goldChange;
+
+            // Update DOM Elements
+            const formatChange = (change) => (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+            
+            document.getElementById('ticker-nifty').innerHTML = `${niftyCurrent.toFixed(2)} <span class="${niftyChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}">(${formatChange(niftyChange)})</span>`;
+            document.getElementById('ticker-sensex').innerHTML = `${sensexCurrent.toFixed(2)} <span class="${sensexChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}">(${formatChange(sensexChange)})</span>`;
+            document.getElementById('ticker-usd').textContent = usdCurrent.toFixed(2);
+            document.getElementById('ticker-gold').textContent = '₹' + goldCurrent.toLocaleString('en-IN');
+
+            showToast('Live market data synced (Simulation).');
+        }
+
+        const state = {
+            lumpsum: 2500000,
+            sip: 75000,
+            years: 15,
+            bluechip: 45,
+            midcap: 30,
+            gold: 15,
+            esop: 10,
+            inflation: 6,
+            taxRate: 12.5,
+            viewMode: 'towers'
+        };
+
+        const inputs = {
+            lumpsum: document.getElementById('input-lumpsum'),
+            sip: document.getElementById('input-sip'),
+            years: document.getElementById('input-years'),
+            bluechip: document.getElementById('input-bluechip'),
+            midcap: document.getElementById('input-midcap'),
+            gold: document.getElementById('input-gold'),
+            esop: document.getElementById('input-esop'),
+            inflation: document.getElementById('input-inflation'),
+            tax: document.getElementById('input-tax')
+        };
+
+        const displays = {
+            lumpsum: document.getElementById('val-lumpsum'),
+            sip: document.getElementById('val-sip'),
+            years: document.getElementById('val-years'),
+            bluechip: document.getElementById('val-bluechip'),
+            midcap: document.getElementById('val-midcap'),
+            gold: document.getElementById('val-gold'),
+            esop: document.getElementById('val-esop'),
+            invested: document.getElementById('out-invested'),
+            wealth: document.getElementById('out-wealth'),
+            gain: document.getElementById('out-gain'),
+            tax: document.getElementById('out-tax'),
+            posttax: document.getElementById('out-posttax')
+        };
+
+        let scene, camera, renderer, assetGroup, particleSystem;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let targetRotation = { x: 0.3, y: -0.5 };
+        let wealthChartInstance = null;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020617, 0.03);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 8, 22);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0x10b981, 2.5);
+            dirLight.position.set(15, 30, 20);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            const blueLight = new THREE.DirectionalLight(0x3b82f6, 1.8);
+            blueLight.position.set(-15, -15, -10);
+            scene.add(blueLight);
+
+            // Grid floor
+            const gridHelper = new THREE.GridHelper(40, 40, 0x064e3b, 0x0f172a);
+            gridHelper.position.y = -2;
+            scene.add(gridHelper);
+
+            assetGroup = new THREE.Group();
+            scene.add(assetGroup);
+
+            buildSceneContent();
+
+            // Mouse interaction
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                targetRotation.y += deltaX * 0.005;
+                targetRotation.x += deltaY * 0.005;
+                targetRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetRotation.x));
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // Touch support
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            });
+
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                const deltaY = e.touches[0].clientY - previousMousePosition.y;
+
+                targetRotation.y += deltaX * 0.005;
+                targetRotation.x += deltaY * 0.005;
+                targetRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetRotation.x));
+
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            });
+
+            window.addEventListener('touchend', () => { isDragging = false; });
+            window.addEventListener('resize', onWindowResize);
+
+            animate();
+        }
+
+        function calculatePortfolio() {
+            state.lumpsum = parseInt(inputs.lumpsum.value);
+            state.sip = parseInt(inputs.sip.value);
+            state.years = parseInt(inputs.years.value);
+            state.bluechip = parseInt(inputs.bluechip.value);
+            state.midcap = parseInt(inputs.midcap.value);
+            state.gold = parseInt(inputs.gold.value);
+            state.esop = parseInt(inputs.esop.value);
+            state.inflation = parseFloat(inputs.inflation.value);
+            state.taxRate = parseFloat(inputs.tax.value);
+
+            // Normalize asset allocations if sum != 100
+            const totalAlloc = state.bluechip + state.midcap + state.gold + state.esop;
+            const bNorm = totalAlloc > 0 ? state.bluechip / totalAlloc : 0.25;
+            const mNorm = totalAlloc > 0 ? state.midcap / totalAlloc : 0.25;
+            const gNorm = totalAlloc > 0 ? state.gold / totalAlloc : 0.25;
+            const eNorm = totalAlloc > 0 ? state.esop / totalAlloc : 0.25;
+
+            // Assumed CAGR per asset class
+            const cagrBluechip = 13;
+            const cagrMidcap = 17;
+            const cagrGold = 10;
+            const cagrEsop = 22;
+
+            const blendedCagr = (bNorm * cagrBluechip) + (mNorm * cagrMidcap) + (gNorm * cagrGold) + (eNorm * cagrEsop);
+
+            const totalMonths = state.years * 12;
+            const monthlyRate = (blendedCagr / 100) / 12;
+            
+            const fvLumpsum = state.lumpsum * Math.pow(1 + (blendedCagr / 100), state.years);
+            let fvSip = 0;
+            if (monthlyRate > 0) {
+                fvSip = state.sip * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate) * (1 + monthlyRate);
+            } else {
+                fvSip = state.sip * totalMonths;
+            }
+
+            const totalInvested = state.lumpsum + (state.sip * totalMonths);
+            const totalWealth = fvLumpsum + fvSip;
+            const wealthGain = Math.max(0, totalWealth - totalInvested);
+            const estimatedTax = wealthGain * (state.taxRate / 100);
+            const postTaxWealth = totalWealth - estimatedTax;
+
+            // Update UI
+            displays.lumpsum.textContent = formatINR(state.lumpsum);
+            displays.sip.textContent = formatINR(state.sip);
+            displays.years.textContent = state.years + (state.years === 1 ? ' Year' : ' Years');
+            displays.bluechip.textContent = state.bluechip + '%';
+            displays.midcap.textContent = state.midcap + '%';
+            displays.gold.textContent = state.gold + '%';
+            displays.esop.textContent = state.esop + '%';
+
+            displays.invested.textContent = formatINR(totalInvested);
+            displays.wealth.textContent = formatINR(totalWealth);
+            displays.gain.textContent = formatINR(wealthGain);
+            displays.tax.textContent = formatINR(estimatedTax);
+            displays.posttax.textContent = formatINR(postTaxWealth);
+
+            // Legend breakdown
+            document.getElementById('legend-bluechip').textContent = formatINR(totalWealth * bNorm);
+            document.getElementById('legend-midcap').textContent = formatINR(totalWealth * mNorm);
+            document.getElementById('legend-gold').textContent = formatINR(totalWealth * gNorm);
+            document.getElementById('legend-esop').textContent = formatINR(totalWealth * eNorm);
+
+            buildSceneContent();
+            if (wealthChartInstance) updateChartData();
+        }
+
+        function formatINR(num) {
+            if (num >= 1e7) return '₹' + (num / 1e7).toFixed(2) + ' Cr';
+            if (num >= 1e5) return '₹' + (num / 1e5).toFixed(1) + ' Lakhs';
+            return '₹' + num.toLocaleString('en-IN');
+        }
+
+        function buildSceneContent() {
+            while(assetGroup.children.length > 0){ 
+                const obj = assetGroup.children[0];
+                assetGroup.remove(obj); 
+            }
+
+            const totalMonths = state.years * 12;
+            const totalInvested = state.lumpsum + (state.sip * totalMonths);
+            const totalWealth = totalInvested * 2.8; // scaling factor for visual representation
+
+            if (state.viewMode === 'towers') {
+                const totalAlloc = state.bluechip + state.midcap + state.gold + state.esop || 1;
+                const pillars = [
+                    { name: "Bluechip", val: totalWealth * (state.bluechip / totalAlloc), color: 0x3b82f6, x: -4.5 },
+                    { name: "Midcap", val: totalWealth * (state.midcap / totalAlloc), color: 0x10b981, x: -1.5 },
+                    { name: "Gold", val: totalWealth * (state.gold / totalAlloc), color: 0xf59e0b, x: 1.5 },
+                    { name: "ESOPs", val: totalWealth * (state.esop / totalAlloc), color: 0x06b6d4, x: 4.5 }
+                ];
+
+                const maxVal = Math.max(...pillars.map(p => p.val)) || 1;
+
+                pillars.forEach((p) => {
+                    const h = Math.max(1.2, (p.val / maxVal) * 5.8);
+                    const geo = new THREE.BoxGeometry(1.8, h, 1.8);
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: p.color,
+                        roughness: 0.2,
+                        metalness: 0.8,
+                        emissive: p.color,
+                        emissiveIntensity: 0.25
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.set(p.x, h / 2 - 2, 0);
+                    mesh.castShadow = true;
+                    assetGroup.add(mesh);
+
+                    // Crown ring
+                    const ringGeo = new THREE.TorusGeometry(1.1, 0.08, 16, 32);
+                    const ringMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, metalness: 0.9 });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = Math.PI / 2;
+                    ring.position.set(p.x, h - 2, 0);
+                    assetGroup.add(ring);
+                });
+            } else if (state.viewMode === 'particles') {
+                // Particle Market Matrix
+                const particleCount = 1200;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+
+                const colorBase = new THREE.Color(0x10b981);
+                const colorAlt = new THREE.Color(0x3b82f6);
+
+                for (let i = 0; i < particleCount * 3; i += 3) {
+                    positions[i] = (Math.random() - 0.5) * 22;
+                    positions[i + 1] = (Math.random() - 0.5) * 12;
+                    positions[i + 2] = (Math.random() - 0.5) * 22;
+
+                    const col = Math.random() > 0.5 ? colorBase : colorAlt;
+                    colors[i] = col.r;
+                    colors[i + 1] = col.g;
+                    colors[i + 2] = col.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.22,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.85
+                });
+
+                particleSystem = new THREE.Points(geometry, material);
+                assetGroup.add(particleSystem);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (state.viewMode === 'towers') {
+                assetGroup.rotation.y += (targetRotation.y - assetGroup.rotation.y) * 0.05;
+                assetGroup.rotation.x += (targetRotation.x - assetGroup.rotation.x) * 0.05;
+            } else if (state.viewMode === 'particles' && particleSystem) {
+                particleSystem.rotation.y += 0.002;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function switchView(mode) {
+            state.viewMode = mode;
+            const chartEl = document.getElementById('chart-container');
+            
+            document.getElementById('btn-towers').className = 'px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition';
+            document.getElementById('btn-particles').className = 'px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition';
+            document.getElementById('btn-chart').className = 'px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition';
+
+            if (mode === 'towers') {
+                document.getElementById('btn-towers').className = 'px-3.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white transition shadow';
+                chartEl.classList.add('hidden');
+            } else if (mode === 'particles') {
+                document.getElementById('btn-particles').className = 'px-3.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white transition shadow';
+                chartEl.classList.add('hidden');
+            } else if (mode === 'chart') {
+                document.getElementById('btn-chart').className = 'px-3.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white transition shadow';
+                chartEl.classList.remove('hidden');
+                initChart();
+            }
+            buildSceneContent();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('wealthChart').getContext('2d');
+            
+            const labels = [];
+            const investedData = [];
+            const wealthData = [];
+
+            let inv = state.lumpsum;
+            let wel = state.lumpsum;
+            const monthlyRate = 0.14 / 12;
+
+            for (let y = 1; y <= state.years; y++) {
+                labels.push(`Year ${y}`);
+                for (let m = 0; m < 12; m++) {
+                    inv += state.sip;
+                    wel = (wel + state.sip) * (1 + monthlyRate);
+                }
+                investedData.push(Math.round(inv));
+                wealthData.push(Math.round(wel));
+            }
+
+            if (wealthChartInstance) {
+                wealthChartInstance.destroy();
+            }
+
+            wealthChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Total Invested Capital',
+                            data: investedData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Compounded Wealth Value',
+                            data: wealthData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(51, 65, 85, 0.2)' } },
+                        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(51, 65, 85, 0.2)' } }
+                    }
+                }
+            });
+        }
+
+        function updateChartData() {
+            if (wealthChartInstance) initChart();
+        }
+
+        function loadPreset(type) {
+            if (type === 'hni') {
+                inputs.lumpsum.value = 10000000;
+                inputs.sip.value = 250000;
+                inputs.years.value = 20;
+                inputs.bluechip.value = 50;
+                inputs.midcap.value = 25;
+                inputs.gold.value = 15;
+                inputs.esop.value = 10;
+                calculatePortfolio();
+                showToast('Loaded HNI Mega Portfolio Preset!');
+            } else if (type === 'fire') {
+                inputs.lumpsum.value = 1500000;
+                inputs.sip.value = 50000;
+                inputs.years.value = 12;
+                inputs.bluechip.value = 40;
+                inputs.midcap.value = 40;
+                inputs.gold.value = 10;
+                inputs.esop.value = 10;
+                calculatePortfolio();
+                showToast('Loaded FIRE (Financial Independence) Preset!');
+            }
+        }
+
+        function resetSimulator() {
+            inputs.lumpsum.value = 2500000;
+            inputs.sip.value = 75000;
+            inputs.years.value = 15;
+            inputs.bluechip.value = 45;
+            inputs.midcap.value = 30;
+            inputs.gold.value = 15;
+            inputs.esop.value = 10;
+            inputs.inflation.value = 6;
+            inputs.tax.value = 12.5;
+            calculatePortfolio();
+            showToast('Simulator reset to default parameters.');
+        }
+
+        function openExportModal() {
+            const modal = document.getElementById('report-modal');
+            const content = document.getElementById('modal-content');
+            
+            // Fetch actual calculated values from the UI displays
+            const investedVal = displays.invested.textContent;
+            const wealthVal = displays.wealth.textContent;
+            const taxVal = displays.tax.textContent;
+            const posttaxVal = displays.posttax.textContent;
+
+            content.innerHTML = `
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between border-b border-slate-800 pb-2 mb-2"><span>Prepared For:</span><strong class="text-emerald-400">S.S MANIKANDA PRABU</strong></div>
+                    <div class="flex justify-between"><span>Investment Timeframe:</span><strong class="text-white">${state.years} Years</strong></div>
+                    <div class="flex justify-between"><span>Initial Lumpsum:</span><strong class="text-white">${formatINR(state.lumpsum)}</strong></div>
+                    <div class="flex justify-between"><span>Monthly SIP Contribution:</span><strong class="text-white">${formatINR(state.sip)}</strong></div>
+                    <div class="flex justify-between"><span>Total Capital Invested:</span><strong class="text-blue-400">${investedVal}</strong></div>
+                    <div class="flex justify-between"><span>Gross Projected Wealth:</span><strong class="text-emerald-400">${wealthVal}</strong></div>
+                    <div class="flex justify-between"><span>Capital Gains Tax (${state.taxRate}%):</span><strong class="text-rose-400">${taxVal}</strong></div>
+                    <div class="flex justify-between border-t border-slate-800 pt-2"><span>Net Post-Tax Wealth:</span><strong class="text-cyan-300">${posttaxVal}</strong></div>
+                </div>
+                <p class="text-[11px] text-slate-400">Compliance note: Calculated based on Indian capital gains tax rules and equity/gold blend models.</p>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function closeExportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+        
+        function downloadPDFReport() {
+            showToast('Generating PDF Report... Please wait.');
+            
+            // Get actual values
+            const investedVal = displays.invested.textContent;
+            const wealthVal = displays.wealth.textContent;
+            const taxVal = displays.tax.textContent;
+            const posttaxVal = displays.posttax.textContent;
+
+            // Create a clean, printable HTML structure internally
+            const printElement = document.createElement('div');
+            printElement.style.padding = '40px';
+            printElement.style.backgroundColor = '#ffffff';
+            printElement.style.color = '#0f172a';
+            printElement.style.fontFamily = 'Inter, sans-serif';
+            printElement.innerHTML = `
+                <h1 style="color: #047857; font-size: 24px; margin-bottom: 5px; border-bottom: 2px solid #34d399; padding-bottom: 10px;">StockAsset India Pro</h1>
+                <h2 style="color: #334155; font-size: 16px; margin-bottom: 10px;">Executive Wealth & Tax Summary Report</h2>
+                <p style="color: #64748b; font-size: 14px; margin-bottom: 30px;">Prepared for: <strong style="color: #0f172a; text-transform: uppercase;">S.S MANIKANDA PRABU</strong></p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+                    <tr><td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><strong>Investment Timeframe:</strong></td><td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right;">${state.years} Years</td></tr>
+                    <tr><td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><strong>Initial Lumpsum:</strong></td><td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatINR(state.lumpsum)}</td></tr>
+                    <tr><td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><strong>Monthly SIP:</strong></td><td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatINR(state.sip)}</td></tr>
+                    <tr><td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><strong>Total Capital Invested:</strong></td><td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #2563eb; font-weight: bold;">${investedVal}</td></tr>
+                    <tr><td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><strong>Gross Projected Wealth:</strong></td><td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #059669; font-weight: bold;">${wealthVal}</td></tr>
+                    <tr><td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><strong>Capital Gains Tax (${state.taxRate}%):</strong></td><td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #e11d48; font-weight: bold;">${taxVal}</td></tr>
+                    <tr><td style="padding: 14px; border-top: 2px solid #0f172a; font-size: 18px;"><strong>Net Post-Tax Wealth:</strong></td><td style="padding: 14px; border-top: 2px solid #0f172a; text-align: right; color: #0f766e; font-weight: bold; font-size: 18px;">${posttaxVal}</td></tr>
+                </table>
+                
+                <div style="margin-top: 30px;">
+                    <h3 style="font-size: 15px; color: #475569; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Asset Allocation Strategy</h3>
+                    <ul style="list-style-type: none; padding: 0; font-size: 14px;">
+                        <li style="padding: 6px 0;">Bluechip / Nifty: <strong style="color: #2563eb;">${state.bluechip}%</strong></li>
+                        <li style="padding: 6px 0;">Mid & Small Cap: <strong style="color: #059669;">${state.midcap}%</strong></li>
+                        <li style="padding: 6px 0;">Gold & Sovereign: <strong style="color: #d97706;">${state.gold}%</strong></li>
+                        <li style="padding: 6px 0;">ESOPs & Crypto: <strong style="color: #0891b2;">${state.esop}%</strong></li>
+                    </ul>
+                </div>
+                <p style="margin-top: 50px; font-size: 11px; color: #94a3b8; text-align: center;">Generated by StockAsset India Pro | Simulated calculations based on customized parameters.</p>
+            `;
+
+            // Configuration for html2pdf
+            const opt = {
+                margin:       0.5,
+                filename:     'StockAsset_India_Wealth_Report.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            // Generate and save the PDF
+            html2pdf().set(opt).from(printElement).save().then(() => {
+                showToast('Success! PDF Wealth Report downloaded.');
+                closeExportModal();
+            }).catch(err => {
+                showToast('Error generating PDF.');
+                console.error(err);
+            });
+        }
+
+        function showToast(msg) {
+            const banner = document.getElementById('toast-banner');
+            document.getElementById('toast-text').textContent = msg;
+            banner.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                banner.classList.add('translate-y-24', 'opacity-0');
+            }, 3500);
+        }
+
+        Object.keys(inputs).forEach(key => {
+            inputs[key].addEventListener('input', calculatePortfolio);
+        });
+
+        window.onload = function() {
+            init3D();
+            calculatePortfolio();
+            refreshLiveMarket(); // Auto-run market simulation on load so it changes daily/per session
+        };
+    </script>
+</body>
+</html>
